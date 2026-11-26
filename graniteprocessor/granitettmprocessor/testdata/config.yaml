@@ -1,0 +1,94 @@
+# Example configuration for Granite TTM-R2 Processor
+# This replaces the Isolation Forest processor configuration
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4320
+      http:
+        endpoint: 0.0.0.0:4321
+
+processors:
+  # Granite TTM-R2 Processor Configuration
+  granitettm:
+    # ─── TTM-R2 Service Connection ────────────────────────────────
+    endpoint: "localhost:50051"
+    timeout: "5s"
+    tls:
+      insecure: true  # Set to false in production
+      # cert_file: "/path/to/client.crt"
+      # key_file: "/path/to/client.key"
+      # ca_file: "/path/to/ca.crt"
+    
+    # ─── Time Series Configuration ────────────────────────────────
+    # TTM-R2 optimal settings
+    context_length: 1024      # Number of historical points (TTM-R2 optimal)
+    forecast_horizon: 96     # Number of future points to predict
+    buffer_size: 1024        # Max buffer size (2x context_length recommended)
+    flush_interval: "30s"    # How often to process buffered data
+
+    # ─── Metric Selection (optional) ──────────────────────────────
+    # If empty, all metrics are processed
+    # metric_selectors:
+    #   - name_pattern: "system.cpu.*"
+    #     resource_attributes:
+    #       - "service.name"
+    #       - "host.name"
+      
+    #   - name_pattern: "system.memory.*"
+    #     resource_attributes:
+    #       - "service.name"
+    
+    # ─── Anomaly Detection Settings ───────────────────────────────
+    anomaly_threshold: 0.7   # Score threshold (0-1) for classification
+    detection_mode: "reconstruction"  # reconstruction | forecast | both
+    sensitivity: "medium"    # low | medium | high
+    
+    # ─── Output Configuration ─────────────────────────────────────
+    mode: "enrich"           # enrich | filter | both
+    score_attribute: "ttm.anomaly_score"
+    classification_attribute: "ttm.is_anomaly"
+    add_forecast_metrics: false
+    
+    # ─── Performance Tuning ───────────────────────────────────────
+    max_concurrent_requests: 4
+    batch_size: 32
+    enable_caching: true
+
+  # Optional: Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1000
+
+exporters:
+  # Debug exporter for testing
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # OTLP exporter for forwarding
+  otlp:
+    endpoint: "localhost:4317"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [granitettm, batch]
+      exporters: [debug]
+
+  # telemetry:
+  #   logs:
+  #     level: info
+  #   metrics:
+  #     level: detailed
+  #     readers:
+  #       - pull:
+  #           exporter:
+  #             prometheus:
+  #               host: 0.0.0.0
+  #               port: 8889

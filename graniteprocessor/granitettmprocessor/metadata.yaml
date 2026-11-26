@@ -1,0 +1,17 @@
+type: granitettm
+
+status:
+  class: processor
+  stability:
+    alpha: [metrics]
+  distributions: []
+  codeowners:
+    active: []
+
+resource_attributes: {}
+
+attributes: {}
+
+metrics: {}
+
+# Made with Bob
