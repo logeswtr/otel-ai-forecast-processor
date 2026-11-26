@@ -1,0 +1,127 @@
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package ttm;
+
+option go_package = "github.com/open-telemetry/opentelemetry-collector-contrib/processor/granitettmprocessor/internal/ttmproto";
+
+// TTMService provides time series anomaly detection using IBM Granite TTM-R2 model
+service TTMService {
+  // DetectAnomalies performs anomaly detection on time series data
+  rpc DetectAnomalies(AnomalyRequest) returns (AnomalyResponse);
+  
+  // Forecast generates future predictions for time series
+  rpc Forecast(ForecastRequest) returns (ForecastResponse);
+  
+  // HealthCheck verifies service availability
+  rpc HealthCheck(HealthRequest) returns (HealthResponse);
+}
+
+// AnomalyRequest contains time series data for anomaly detection
+message AnomalyRequest {
+  repeated TimeSeries series = 1;
+  DetectionConfig config = 2;
+}
+
+// TimeSeries represents a single metric time series
+message TimeSeries {
+  string metric_name = 1;
+  repeated double values = 2;
+  repeated int64 timestamps = 3;  // Unix nanoseconds
+  map<string, string> attributes = 4;
+  string series_id = 5;  // Unique identifier for this series
+}
+
+// DetectionConfig configures the anomaly detection behavior
+message DetectionConfig {
+  int32 context_length = 1;      // Number of historical points to use
+  int32 forecast_horizon = 2;    // Number of future points to predict
+  string detection_mode = 3;     // "reconstruction" | "forecast" | "both"
+  float threshold = 4;           // Anomaly score threshold (0-1)
+  string sensitivity = 5;        // "low" | "medium" | "high"
+}
+
+// AnomalyResponse contains detection results
+message AnomalyResponse {
+  repeated AnomalyResult results = 1;
+  ResponseMetadata metadata = 2;
+}
+
+// AnomalyResult contains anomaly detection results for a single series
+message AnomalyResult {
+  string series_id = 1;
+  repeated float anomaly_scores = 2;     // Per-timestamp anomaly scores (0-1)
+  repeated bool is_anomaly = 3;          // Binary classification per timestamp
+  float overall_score = 4;               // Aggregate anomaly score for the series
+  string explanation = 5;                // Human-readable explanation
+  ReconstructionData reconstruction = 6; // Reconstructed values (optional)
+}
+
+// ReconstructionData contains model reconstruction for comparison
+message ReconstructionData {
+  repeated double reconstructed_values = 1;
+  repeated double reconstruction_errors = 2;
+}
+
+// ForecastRequest requests future predictions
+message ForecastRequest {
+  repeated TimeSeries series = 1;
+  ForecastConfig config = 2;
+}
+
+// ForecastConfig configures forecasting behavior
+message ForecastConfig {
+  int32 context_length = 1;
+  int32 forecast_horizon = 2;
+  bool include_confidence_intervals = 3;
+}
+
+// ForecastResponse contains forecast results
+message ForecastResponse {
+  repeated ForecastResult results = 1;
+  ResponseMetadata metadata = 2;
+}
+
+// ForecastResult contains forecast for a single series
+message ForecastResult {
+  string series_id = 1;
+  repeated double forecast_values = 2;
+  repeated int64 forecast_timestamps = 3;
+  ConfidenceIntervals confidence = 4;
+}
+
+// ConfidenceIntervals provides uncertainty bounds
+message ConfidenceIntervals {
+  repeated double lower_bound = 1;  // 95% confidence lower bound
+  repeated double upper_bound = 2;  // 95% confidence upper bound
+}
+
+// HealthRequest checks service health
+message HealthRequest {
+  bool detailed = 1;  // Request detailed health information
+}
+
+// HealthResponse indicates service health status
+message HealthResponse {
+  string status = 1;  // "healthy" | "degraded" | "unhealthy"
+  string model_version = 2;
+  int64 uptime_seconds = 3;
+  HealthMetrics metrics = 4;
+}
+
+// HealthMetrics provides service performance metrics
+message HealthMetrics {
+  int64 total_requests = 1;
+  int64 failed_requests = 2;
+  double avg_latency_ms = 3;
+  double model_memory_mb = 4;
+}
+
+// ResponseMetadata provides information about the response
+message ResponseMetadata {
+  int64 processing_time_ms = 1;
+  string model_version = 2;
+  int32 batch_size = 3;
+}
