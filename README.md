@@ -1,3 +1,5 @@
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/9401f20b-9b95-43bd-b514-61857ed53d23" />
+
 # Spot Problems Before Your Pager Does: AI Anomaly Detection and Forecasting in the OpenTelemetry Collector
 
 *Add AI-powered anomaly detection and short-term forecasting to your metrics with a single Collector processor. It needs no per-metric thresholds and no model training.*
